@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <semaphore.h>
+#include <unistd.h>
+char buffer[5] = {' ',' ',' ',' ',' '};
+int in = 0;
+int out = 0;
+sem_t vagos;
+sem_t preenchidos;
+pthread_mutex_t slot;
+
+void* produtor(void* ptr){
+    int item;
+    int n = *((int*)ptr);
+    for(int i = 0;i<10;i++){
+
+    item = 'x'; //produçao item
+    sem_wait(&vagos); //concorrendo espaço no buffer
+    pthread_mutex_lock(&slot); // tentando acessar a regiao critica slot = 1 // quase um if dizendo para so uma thread entrar
+    buffer[in] = item;  // regiao critica
+    printf("Thread produtora %d escreveu um item na posicao %d do buffer : \n",n,in);
+    printf("%s\n",buffer);
+
+    sleep(2);
+    in = (in + 1)%10; // tamanho do buffer de 0 ate 4,terminou ele volta pro proximo disponivel
+    pthread_mutex_unlock(&slot);
+    sem_post(&preenchidos); // dizendo que apos produtor colocar algo no buffer, o semaforo preenchidos vai ser adicionado em 1 para dizer que tem um local do buffer preenchido
+
+    }
+    return NULL;
+}
+
+
+void* consumidor(void* ptr){
+    int n = *((int*)ptr);
+for(int i = 0;i<10;i++){
+    sem_wait(&preenchidos); // retiro 1 de preenchidos pois estou consumindo entao aquele item preenchido vai ser consumido
+    pthread_mutex_lock(&slot);
+    buffer[out] = ' '; // regiao critica
+    printf("Thread consumidora %d retirou um item na posicao %d do buffer : \n",n,out);
+    printf("%s\n",buffer);
+    sleep(2);
+    out = (out + 1)%10; // tamanho do buffer de 0 ate 4, terminou ele volta pro proximo disponivel
+    pthread_mutex_unlock(&slot);
+    sem_post(&vagos); // somente quando terminar consumir algo que o produtor sai, o consumidor consome, e um espaço vago some, ficando espaço livre para outro produtor produzir
+}
+    return NULL;
+}
+int main()
+{
+    int np1 = 1;
+    int np2 = 2;
+    int np3 = 3;
+    int np4 = 4;
+    int np5 = 5;
+
+    int nc1 = 1;
+    int nc2 = 2;
+    int nc3 = 3;
+    int nc4 = 4;
+    int nc5 = 5;
+sem_init(&preenchidos,0,0); // 0 preenchidos no começo
+     pthread_mutex_unlock(&slot); // setar entrada palco para 1 para dar entrada
+    sem_init(&vagos,0,10); // tamanho buffer espaços livres para produtor
+
+    pthread_t thread_p1;
+    pthread_t thread_p2;
+    pthread_t thread_p3;
+    pthread_t thread_p4;
+    pthread_t thread_p5;
+
+    pthread_t thread_c1;
+    pthread_t thread_c2;
+    pthread_t thread_c3;
+    pthread_t thread_c4;
+    pthread_t thread_c5;
+
+    pthread_create(&thread_p1,NULL,produtor,&np1);
+    pthread_create(&thread_p2,NULL,produtor,&np2);
+    pthread_create(&thread_p3,NULL,produtor,&np3);
+    pthread_create(&thread_p4,NULL,produtor,&np4);
+    pthread_create(&thread_p5,NULL,produtor,&np5);
+
+    pthread_create(&thread_c1,NULL,consumidor,&nc1);
+    pthread_create(&thread_c2,NULL,consumidor,&nc2);
+    pthread_create(&thread_c3,NULL,consumidor,&nc3);
+    pthread_create(&thread_c4,NULL,consumidor,&nc4);
+    pthread_create(&thread_c5,NULL,consumidor,&nc5);
+
+    pthread_join(thread_p1,NULL);
+    pthread_join(thread_p2,NULL);
+    pthread_join(thread_p3,NULL);
+    pthread_join(thread_p4,NULL);
+    pthread_join(thread_p5,NULL);
+
+    pthread_join(thread_c1,NULL);
+    pthread_join(thread_c2,NULL);
+    pthread_join(thread_c3,NULL);
+    pthread_join(thread_c4,NULL);
+    pthread_join(thread_c5,NULL);
+
+
+}
